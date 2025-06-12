@@ -29,7 +29,7 @@ library(ggpubr)
 
 ```{r}
 # Set the path to your folder
-folder_path <- "/Users/df23614/Desktop/vaccine_model/UK CoMix bootstrap data"
+folder_path <- "/Users/df23614/Desktop/vaccine_model/github_codes/data/UK CoMix bootstrap data"
 
 # Get the list of all CSV files in the folder
 file_list <- list.files(path = folder_path, pattern = "UK_CoMix_bootstrap_.*\\.csv$", full.names = TRUE)
@@ -41,7 +41,7 @@ sample_data <- lapply(file_list, read.csv)
 Read vaccine data do the preparation for that one
 
 ```{r}
-vacc <- read.csv("Vac_perc.csv")
+vacc <- read.csv("/Users/df23614/Desktop/vaccine_model/github_codes/data/Vac_perc.csv")
 
 # Data pre-processing
 ## Remove first three rows (general info about the data)
@@ -356,7 +356,7 @@ plot_all <- ggplot() +
   
   scale_y_continuous(name = "Average number of contacts\n(per person)",
                      limits = c(0,10),
-                     sec.axis = sec_axis(~., name = "Vaccinated population\n(scaled by /10)")) +
+                     sec.axis = sec_axis(~. * 10, name = "Vaccinated population (%)")) +
   
   labs(x = "Date", colour = "Colour") +
   
