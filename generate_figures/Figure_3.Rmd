@@ -22,7 +22,7 @@ library(ggpubr)
 ```
 
 ```{r}
-vacc <- read.csv("Vac_perc.csv")
+vacc <- read.csv("/Users/df23614/Desktop/vaccine_model/github_codes/data/Vac_perc.csv")
 
 # Data pre-processing
 ## Remove first three rows (general info about the data)
@@ -64,7 +64,7 @@ Load the dataset
 
 ```{r}
 # CoMix data
-comix_org <- read.csv("UK_CoMix.csv")
+comix_org <- read.csv("/Users/df23614/Desktop/vaccine_model/github_codes/data/UK_CoMix.csv")
 
 # Convert dates into date format (they are in character format)
 comix_org <- comix_org %>%
@@ -193,7 +193,7 @@ vacc_comix$contact_model <- 2.73 + 2.74 * vacc_comix$perc_first_dose/100
 # Variants data
 
 ```{r}
-variants <- read.csv("variants.csv")
+variants <- read.csv("/Users/df23614/Desktop/vaccine_model/github_codes/data/variants.csv")
 
 variants$date <- as.Date(variants$date, format = "%d/%m/%Y")
 
@@ -393,7 +393,7 @@ Alpha
 alpha <- ggplot(data_comm, aes(x = perc_first_dose)) +
   geom_line(aes(y = Delta_R_homo_alpha, colour = "Homogeneous mixing"), linewidth = 1) +
   geom_line(aes(y = Delta_R_eff_alpha, colour = "Heterogeneous mixing"), linewidth = 1) +
-  labs(x = "", y = expression(Delta * R[eff]), colour = "model", title = expression("Alpha")) +
+  labs(x = "", y = expression(tilde(R)[eff]), colour = "model", title = expression("Alpha")) +
   scale_x_continuous(breaks = seq(0, 100, 20), limits = c(0, 100)) +
   theme_minimal() +
   theme(legend.position = "no") +
@@ -466,7 +466,7 @@ all <- ggplot(data_comm, aes(x = date)) +
   geom_line(aes(y = Delta_R_eff, colour = "Heterogeneous mixing"), linewidth = 1) +
   geom_vline(xintercept = as.Date("2021-04-25"), colour = "black", linetype = "dashed") + 
   geom_vline(xintercept = as.Date("2021-11-22"), colour = "black", linetype = "dashed") +
-  labs(x = "Date", y = expression(Delta * R[eff]), colour = "Model") +
+  labs(x = "Date", y = expression(tilde(R)[eff]), colour = "Model") +
   scale_x_continuous(breaks = seq(min(data_comm$date), max(data_comm$date), by = "2 month")) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
