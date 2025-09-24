@@ -1,0 +1,225 @@
+---
+title: "regression_analysis"
+output: html_document
+date: "2025-09-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(Deriv)
+library(MASS)
+library(tidyr)
+library(lubridate)
+library(scales)
+library(gridExtra)
+library(patchwork)
+library(reshape2)
+```
+
+Load the dataset 
+
+```{r}
+# CoMix data
+comix_org <- read.csv("/Users/df23614/Desktop/vaccine_model/UK_CoMix.csv")
+
+# Convert dates into date format (they are in character format)
+comix_org <- comix_org %>%
+  mutate(
+    start.date = dmy(start.date),
+    end.date = dmy(end.date)
+  )
+```
+
+Convert data into long format
+
+```{r}
+long_comix <- melt(comix_org, id.vars = "start.day.as.a.number",
+                   measure.vars = c("start.date", "end.date"),
+                   variable.name = "date")
+```
+
+Midpoint of the start and end date
+
+```{r}
+long_comix <- long_comix %>%
+  group_by(start.day.as.a.number) %>%
+  mutate(mid_date = mean(value))
+```
+
+```{r}
+comix_org$date <- unique(long_comix$mid_date)
+
+# Remove start and end dates
+comix_org <- comix_org[, -c(1,2,3)]
+#Reorder columns
+comix_org <- comix_org[, c(21, 1:20)]
+```
+
+Analysis of comix_org data
+
+```{r}
+# Calculate the mean number of contacts for each age group by dividing the number of contacts by total number of participants in that age group
+
+for (i in 1:length(comix_org$date)) {
+  if (i < 4) {
+    comix_org$mean.0.17.to.0.17[i] <- 0
+    comix_org$mean.0.17.to.18.45[i] <- 0
+    comix_org$mean.0.17.to.45.64[i] <- 0
+    comix_org$mean.0.17.to.65.120[i] <- 0
+    
+    comix_org$mean.18.45.to.0.17[i] <- comix_org$X18.45.to.0.17[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.18.45[i] <- comix_org$X18.45.to.18.45[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.45.64[i] <- comix_org$X18.45.to.45.64[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.65.120[i] <- comix_org$X18.45.to.65.120[i]/comix_org$N.18.45[i]
+    
+    comix_org$mean.45.64.to.0.17[i] <- comix_org$X45.64.to.0.17[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.18.45[i] <- comix_org$X45.64.to.18.45[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.45.64[i] <- comix_org$X45.64.to.45.64[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.65.120[i] <- comix_org$X45.64.to.65.120[i]/comix_org$N.45.64[i]
+    
+    comix_org$mean.65.120.to.0.17[i] <- comix_org$X65.120.to.0.17[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.18.45[i] <- comix_org$X65.120.to.18.45[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.45.64[i] <- comix_org$X65.120.to.45.64[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.65.120[i] <- comix_org$X65.120.to.65.120[i]/comix_org$N.65.120[i]
+    
+  } else {
+    comix_org$mean.0.17.to.0.17[i] <- comix_org$X0.17.to.0.17[i]/comix_org$N.0.17[i]
+    comix_org$mean.0.17.to.18.45[i] <- comix_org$X0.17.to.18.45[i]/comix_org$N.0.17[i]
+    comix_org$mean.0.17.to.45.64[i] <- comix_org$X0.17.to.45.64[i]/comix_org$N.0.17[i]
+    comix_org$mean.0.17.to.65.120[i] <- comix_org$X0.17.to.65.120[i]/comix_org$N.0.17[i]
+    
+    comix_org$mean.18.45.to.0.17[i] <- comix_org$X18.45.to.0.17[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.18.45[i] <- comix_org$X18.45.to.18.45[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.45.64[i] <- comix_org$X18.45.to.45.64[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.65.120[i] <- comix_org$X18.45.to.65.120[i]/comix_org$N.18.45[i]
+    
+    comix_org$mean.45.64.to.0.17[i] <- comix_org$X45.64.to.0.17[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.18.45[i] <- comix_org$X45.64.to.18.45[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.45.64[i] <- comix_org$X45.64.to.45.64[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.65.120[i] <- comix_org$X45.64.to.65.120[i]/comix_org$N.45.64[i]
+    
+    comix_org$mean.65.120.to.0.17[i] <- comix_org$X65.120.to.0.17[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.18.45[i] <- comix_org$X65.120.to.18.45[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.45.64[i] <- comix_org$X65.120.to.45.64[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.65.120[i] <- comix_org$X65.120.to.65.120[i]/comix_org$N.65.120[i]
+    
+  }
+}
+
+# Calculate the total number of contacts for each age group
+for (i in 1:length(comix_org$date)) {
+  comix_org$contact.0.17[i] <- comix_org$mean.0.17.to.0.17[i] + comix_org$mean.0.17.to.18.45[i] + comix_org$mean.0.17.to.45.64[i] + comix_org$mean.0.17.to.65.120[i]
+  
+  comix_org$contact.18.45[i] <- comix_org$mean.18.45.to.0.17[i] + comix_org$mean.18.45.to.18.45[i] + comix_org$mean.18.45.to.45.64[i] + comix_org$mean.18.45.to.65.120[i]
+  
+  comix_org$contact.45.64[i] <- comix_org$mean.45.64.to.0.17[i] + comix_org$mean.45.64.to.18.45[i] + comix_org$mean.45.64.to.45.64[i] + comix_org$mean.45.64.to.65.120[i]
+  
+  comix_org$contact.65.120[i] <- comix_org$mean.65.120.to.0.17[i] + comix_org$mean.65.120.to.18.45[i] + comix_org$mean.65.120.to.45.64[i] + comix_org$mean.65.120.to.65.120[i]
+  
+}
+
+comix_org$"0-17" <- comix_org$contact.0.17 
+comix_org$"18-45" <- comix_org$contact.18.45 
+comix_org$"45-64" <- comix_org$contact.45.64 
+comix_org$"65-120" <- comix_org$contact.65.120 
+
+```
+
+Mean number of contacts across all age groups
+
+```{r}
+# calculate mean number of contacts across all age groups
+for (i in 1:length(comix_org$date)) {
+  comix_org$contact[i] <- (comix_org$contact.0.17[i]*comix_org$N.0.17[i] + comix_org$contact.18.45[i]*comix_org$N.18.45[i] + comix_org$contact.45.64[i]*comix_org$N.45.64[i] + comix_org$contact.65.120[i]*comix_org$N.65.120[i])/(comix_org$N.0.17[i] +comix_org$N.18.45[i] +comix_org$N.45.64[i] +comix_org$N.65.120[i])
+}
+```
+
+Load the vacc data
+
+```{r}
+vacc <- read.csv("/Users/df23614/Desktop/vaccine_model/Vac_perc.csv")
+
+# Data pre-processing
+## Remove first three rows (general info about the data)
+vacc <- vacc[-(1:6), ]
+## Remove the last row (no data)
+vacc <- vacc[1:(nrow(vacc) - 1), ]
+
+## Rename the columns
+names(vacc) <- c("date", "perc_first_dose", "perc_second_dose", "perc_third_dose")
+
+vacc <- vacc %>%
+  mutate(
+    date = dmy(date))
+
+vacc$perc_first_dose <- as.numeric(vacc$perc_first_dose)
+vacc$perc_second_dose <- as.numeric(vacc$perc_second_dose)
+vacc$perc_third_dose <- as.numeric(vacc$perc_third_dose)
+
+```
+
+```{r}
+# Create a full sequence of daily dates
+full_dates <- tibble(date = seq(min(vacc$date), max(vacc$date), by = "day"))
+
+vacc_daily <- full_dates %>%
+  left_join(vacc, by = "date") %>%
+  mutate(
+    perc_first_dose = spline(vacc$date, vacc$perc_first_dose, xout = date)$y,
+    perc_second_dose = spline(vacc$date, vacc$perc_second_dose, xout = date)$y,
+    perc_third_dose = spline(vacc$date, vacc$perc_third_dose, xout = date)$y
+  )
+```
+
+Combine vacc data and comix data
+
+```{r}
+vacc_daily$date <- as.Date(vacc_daily$date, format = "%Y-%m-%d")
+comix_org$date <- as.Date(comix_org$date, format = "%Y-%m-%d")
+
+vacc_comix <- merge(vacc_daily, comix_org, by = "date")
+
+# extract columns date, perc_first_dose, perc_sec_dose, mean_contact
+vacc_comix <- vacc_comix[, c(1,2,3,49)]
+```
+
+# Regression Models for contact, lockdown and vaccination 
+
+Regression model to see the impact of vaccination and restrictions on number of contacts
+
+Add column named restrictions
+
+```{r}
+for (i in 1:length(vacc_comix$date)) {
+  if (i <= 3) {
+    vacc_comix$restrictions[i] <- "lockdown"
+  } else {
+    vacc_comix$restrictions[i] <- "no_lockdown"
+  }
+}
+
+vacc_comix$perc_first_dose <- round(vacc_comix$perc_first_dose, 2)
+vacc_comix$perc_second_dose <- round(vacc_comix$perc_second_dose, 2)
+vacc_comix$vac_dec_first <- vacc_comix$perc_first_dose/100
+vacc_comix$vac_dec_second <- vacc_comix$perc_second_dose/100
+```
+
+```{r}
+model_1 <- lm(contact ~ vac_dec_first, data = vacc_comix)
+model_1.2 <- lm(contact ~ restrictions, data = vacc_comix)
+model_1.3 <- lm(contact ~ vac_dec_first + restrictions, data = vacc_comix)
+
+
+summary(model_1)
+summary(model_1.2)
+summary(model_1.3)
+
+vif(model_1.3)
+```
