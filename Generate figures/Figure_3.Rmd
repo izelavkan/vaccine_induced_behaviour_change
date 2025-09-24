@@ -1,0 +1,497 @@
+---
+title: "Figure_3"
+author: "izel"
+date: "2025-05-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Necessary packages
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(patchwork)
+library(reshape2)
+library(ggpubr)
+```
+
+```{r}
+# set working directory
+vacc <- read.csv("Vac_perc.csv")
+
+# Data pre-processing
+## Remove first three rows (general info about the data)
+vacc <- vacc[-(1:6), ]
+## Remove the last row (no data)
+vacc <- vacc[1:(nrow(vacc) - 1), ]
+
+## Rename the columns
+names(vacc) <- c("date", "perc_first_dose", "perc_second_dose", "perc_third_dose")
+
+vacc <- vacc %>%
+  mutate(
+    date = dmy(date))
+
+vacc$perc_first_dose <- as.numeric(vacc$perc_first_dose)
+vacc$perc_second_dose <- as.numeric(vacc$perc_second_dose)
+vacc$perc_third_dose <- as.numeric(vacc$perc_third_dose)
+
+```
+
+Interpolate vaccine data
+
+```{r}
+# Create a full sequence of daily dates
+full_dates <- tibble(date = seq(min(vacc$date), max(vacc$date), by = "day"))
+
+vacc_daily <- full_dates %>%
+  left_join(vacc, by = "date") %>%
+  mutate(
+    perc_first_dose = spline(vacc$date, vacc$perc_first_dose, xout = date)$y,
+    perc_second_dose = spline(vacc$date, vacc$perc_second_dose, xout = date)$y,
+    perc_third_dose = spline(vacc$date, vacc$perc_third_dose, xout = date)$y
+  )
+```
+
+# Load comix data
+
+Load the dataset 
+
+```{r}
+# CoMix data (set working directory)
+comix_org <- read.csv("UK_CoMix.csv")
+
+# Convert dates into date format (they are in character format)
+comix_org <- comix_org %>%
+  mutate(
+    start.date = dmy(start.date),
+    end.date = dmy(end.date)
+  )
+```
+
+Convert data into long format
+
+```{r}
+long_comix <- melt(comix_org, id.vars = "start.day.as.a.number",
+                   measure.vars = c("start.date", "end.date"),
+                   variable.name = "date")
+```
+
+Midpoint of the start and end date
+
+```{r}
+long_comix <- long_comix %>%
+  group_by(start.day.as.a.number) %>%
+  mutate(mid_date = mean(value))
+```
+
+```{r}
+comix_org$date <- unique(long_comix$mid_date)
+
+# Remove start and end dates
+comix_org <- comix_org[, -c(1,2,3)]
+#Reorder columns
+comix_org <- comix_org[, c(21, 1:20)]
+```
+
+Analysis of comix_org data
+
+```{r}
+# Calculate the mean number of contacts for each age group by dividing the number of contacts by total number of participants in that age group
+
+for (i in 1:length(comix_org$date)) {
+  if (i < 4) {
+    comix_org$mean.0.17.to.0.17[i] <- 0
+    comix_org$mean.0.17.to.18.45[i] <- 0
+    comix_org$mean.0.17.to.45.64[i] <- 0
+    comix_org$mean.0.17.to.65.120[i] <- 0
+    
+    comix_org$mean.18.45.to.0.17[i] <- comix_org$X18.45.to.0.17[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.18.45[i] <- comix_org$X18.45.to.18.45[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.45.64[i] <- comix_org$X18.45.to.45.64[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.65.120[i] <- comix_org$X18.45.to.65.120[i]/comix_org$N.18.45[i]
+    
+    comix_org$mean.45.64.to.0.17[i] <- comix_org$X45.64.to.0.17[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.18.45[i] <- comix_org$X45.64.to.18.45[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.45.64[i] <- comix_org$X45.64.to.45.64[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.65.120[i] <- comix_org$X45.64.to.65.120[i]/comix_org$N.45.64[i]
+    
+    comix_org$mean.65.120.to.0.17[i] <- comix_org$X65.120.to.0.17[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.18.45[i] <- comix_org$X65.120.to.18.45[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.45.64[i] <- comix_org$X65.120.to.45.64[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.65.120[i] <- comix_org$X65.120.to.65.120[i]/comix_org$N.65.120[i]
+    
+  } else {
+    comix_org$mean.0.17.to.0.17[i] <- comix_org$X0.17.to.0.17[i]/comix_org$N.0.17[i]
+    comix_org$mean.0.17.to.18.45[i] <- comix_org$X0.17.to.18.45[i]/comix_org$N.0.17[i]
+    comix_org$mean.0.17.to.45.64[i] <- comix_org$X0.17.to.45.64[i]/comix_org$N.0.17[i]
+    comix_org$mean.0.17.to.65.120[i] <- comix_org$X0.17.to.65.120[i]/comix_org$N.0.17[i]
+    
+    comix_org$mean.18.45.to.0.17[i] <- comix_org$X18.45.to.0.17[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.18.45[i] <- comix_org$X18.45.to.18.45[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.45.64[i] <- comix_org$X18.45.to.45.64[i]/comix_org$N.18.45[i]
+    comix_org$mean.18.45.to.65.120[i] <- comix_org$X18.45.to.65.120[i]/comix_org$N.18.45[i]
+    
+    comix_org$mean.45.64.to.0.17[i] <- comix_org$X45.64.to.0.17[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.18.45[i] <- comix_org$X45.64.to.18.45[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.45.64[i] <- comix_org$X45.64.to.45.64[i]/comix_org$N.45.64[i]
+    comix_org$mean.45.64.to.65.120[i] <- comix_org$X45.64.to.65.120[i]/comix_org$N.45.64[i]
+    
+    comix_org$mean.65.120.to.0.17[i] <- comix_org$X65.120.to.0.17[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.18.45[i] <- comix_org$X65.120.to.18.45[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.45.64[i] <- comix_org$X65.120.to.45.64[i]/comix_org$N.65.120[i]
+    comix_org$mean.65.120.to.65.120[i] <- comix_org$X65.120.to.65.120[i]/comix_org$N.65.120[i]
+    
+  }
+}
+
+# Calculate the total number of contacts for each age group
+for (i in 1:length(comix_org$date)) {
+  comix_org$contact.0.17[i] <- comix_org$mean.0.17.to.0.17[i] + comix_org$mean.0.17.to.18.45[i] + comix_org$mean.0.17.to.45.64[i] + comix_org$mean.0.17.to.65.120[i]
+  
+  comix_org$contact.18.45[i] <- comix_org$mean.18.45.to.0.17[i] + comix_org$mean.18.45.to.18.45[i] + comix_org$mean.18.45.to.45.64[i] + comix_org$mean.18.45.to.65.120[i]
+  
+  comix_org$contact.45.64[i] <- comix_org$mean.45.64.to.0.17[i] + comix_org$mean.45.64.to.18.45[i] + comix_org$mean.45.64.to.45.64[i] + comix_org$mean.45.64.to.65.120[i]
+  
+  comix_org$contact.65.120[i] <- comix_org$mean.65.120.to.0.17[i] + comix_org$mean.65.120.to.18.45[i] + comix_org$mean.65.120.to.45.64[i] + comix_org$mean.65.120.to.65.120[i]
+  
+}
+
+comix_org$"0-17" <- comix_org$contact.0.17 
+comix_org$"18-45" <- comix_org$contact.18.45 
+comix_org$"45-64" <- comix_org$contact.45.64 
+comix_org$"65-120" <- comix_org$contact.65.120 
+
+
+# calculate mean number of contacts across all age groups
+for (i in 1:length(comix_org$date)) {
+  comix_org$contact[i] <- (comix_org$contact.0.17[i]*comix_org$N.0.17[i] + comix_org$contact.18.45[i]*comix_org$N.18.45[i] + comix_org$contact.45.64[i]*comix_org$N.45.64[i] + comix_org$contact.65.120[i]*comix_org$N.65.120[i])/(comix_org$N.0.17[i] +comix_org$N.18.45[i] +comix_org$N.45.64[i] +comix_org$N.65.120[i])
+}
+```
+
+```{r}
+vacc_daily$date <- as.Date(vacc_daily$date, format = "%Y-%m-%d")
+comix_org$date <- as.Date(comix_org$date, format = "%Y-%m-%d")
+
+vacc_comix <- merge(vacc_daily, comix_org, by = "date")
+
+# extract columns date, perc_first_dose, perc_sec_dose, mean_contact
+vacc_comix <- vacc_comix[, c(1,2,3,49)]
+
+```
+
+```{r}
+# number of contacts from the model
+vacc_comix$contact_model <- 2.73 + 2.74 * vacc_comix$perc_first_dose/100
+```
+
+# Variants data
+
+```{r}
+# set working directory
+variants <- read.csv("variants.csv")
+
+variants$date <- as.Date(variants$date, format = "%d/%m/%Y")
+
+# Dates are ordered from 2022 to 2020, reverse it
+variants <- variants %>% arrange(date)
+```
+
+Create three datasets one for each variant
+
+```{r}
+# 1. Create a new column to identify Omicron subvariants
+variants$is_omicron <- grepl("Omicron", variants$stratum, ignore.case = TRUE)
+
+# 2. Filter for Omicron subvariants
+omicron_data <- variants[variants$is_omicron == TRUE, ]
+
+# 3. Group by week and sum the percentages of Omicron subvariants
+omicron_summary <- omicron_data %>%
+  group_by(date) %>%
+  summarise(omicron_total = sum(metric_value))
+
+
+date_omicron <- omicron_summary$date
+date_delta <- variants$date[which(variants$stratum == "Delta")]
+date_alpha <- variants$date[which(variants$stratum == "Alpha")]
+
+# Data alpha
+dat_alpha <- data.frame("date" = date_alpha,
+                        "prop_alpha" = variants$metric_value[which(variants$stratum == "Alpha")]/100)
+
+# Data delta
+dat_delta <- data.frame("date" = date_delta,
+                        "prop_delta" = variants$metric_value[which(variants$stratum == "Delta")]/100)
+
+# Data omicron
+dat_omic <- data.frame("date" = date_omicron,
+                        "prop_omic" = omicron_summary$omicron_total/100)
+
+```
+
+Combine three datasets into one by using common dates
+
+```{r}
+var_data <- merge(dat_alpha, dat_delta, by = "date")
+
+var_data <- merge(var_data, dat_omic, by = "date")
+
+```
+
+Interpolate variant data
+
+```{r}
+new_dates <- seq(from = min(var_data$date), to = max(var_data$date), by = "day")
+
+# Perform linear interpolation using approx
+interpolated_values_omic <- approx(x = dat_omic$date, y = dat_omic$prop_omic, xout = new_dates)
+
+interpolated_values_delta <- approx(x = dat_delta$date, y = dat_delta$prop_delta, xout = new_dates)
+
+interpolated_values_alpha <- approx(x = dat_alpha$date, y = dat_alpha$prop_alpha, xout = new_dates)
+
+# Create a new data frame with interpolated values
+data_inter <- data.frame(date = as.Date(interpolated_values_omic$x),
+                         omic = interpolated_values_omic$y,
+                         delta = interpolated_values_delta$y,
+                         alpha = interpolated_values_alpha$y
+)
+data_inter$omic <- round(data_inter$omic, 4)
+data_inter$delta <- round(data_inter$delta, 4)
+data_inter$alpha <- round(data_inter$alpha, 4)
+```
+
+Combine variant data with vacc_cases
+
+```{r}
+data_comm <- merge(data_inter, vacc_comix, by = "date")
+```
+
+```{r}
+data_comm$contact_model_2 <- (1 - data_comm$perc_first_dose/100)^2 * 1.68 + 2 * (1 - data_comm$perc_first_dose/100) * (data_comm$perc_first_dose/100) * 5.64 + (data_comm$perc_first_dose/100)^2 * 4.92
+```
+
+Alpha
+
+```{r}
+gamma_u <- 1/10
+gamma_v <- 1/7
+c_uu <- 1.68
+c_uv <- 5.64
+c_vv <- 4.92
+
+alpha_alpha <- (1 - 0.753) # note these are for full vaccination
+pi_alpha <- (1 - 0.786)
+
+psi_alpha <- (gamma_u * alpha_alpha * pi_alpha)/gamma_v
+sigma_u <- c_uv/c_uu
+sigma_v <- c_vv/c_uv
+
+data_comm$a_alpha <- 0*data_comm$perc_first_dose
+data_comm$b_alpha <- 0*data_comm$perc_first_dose
+data_comm$c_alpha <- 0*data_comm$perc_first_dose
+
+
+for (i in 1:length(data_comm$perc_first_dose)) {
+  
+  data_comm$a_alpha[i] <- 1 - psi_alpha * sigma_u * sigma_v 
+  
+  data_comm$b_alpha[i] <- 2 * (1 + psi_alpha * sigma_u * (sigma_v - 2 * sigma_u))
+  
+  data_comm$c_alpha[i] <- 1 + 2 * psi_alpha * sigma_u * (sigma_v - 2 * sigma_u) + (psi_alpha * sigma_u * sigma_v)^2
+  
+  data_comm$Delta_R_eff_alpha[i] <- 0.5 * (1 - data_comm$a_alpha[i] * data_comm$perc_first_dose[i]/100 + 
+                                       sqrt(1 - data_comm$b_alpha[i] * data_comm$perc_first_dose[i]/100 + data_comm$c_alpha[i] * (data_comm$perc_first_dose[i]/100)^2))
+  
+  data_comm$Delta_R_homo_alpha[i] <- (data_comm$contact_model_2[i]/1.68) * (1 - (1 - psi_alpha) * data_comm$perc_first_dose[i]/100)
+  
+}
+```
+
+delta
+
+```{r}
+gamma_u <- 1/10
+gamma_v <- 1/7
+c_uu <- 1.68
+c_uv <- 5.64
+c_vv <- 4.92
+
+alpha_delta <- (1 - 0.160) # note these are for full vaccination
+pi_delta <- (1 - 0.379)
+
+psi_delta <- (gamma_u * alpha_delta * pi_delta)/gamma_v
+sigma_u <- c_uv/c_uu
+sigma_v <- c_vv/c_uv
+
+data_comm$a_delta <- 0*data_comm$perc_first_dose
+data_comm$b_delta <- 0*data_comm$perc_first_dose
+data_comm$c_delta <- 0*data_comm$perc_first_dose
+
+
+for (i in 1:length(data_comm$perc_first_dose)) {
+  
+  data_comm$a_delta[i] <- 1 - psi_delta * sigma_u * sigma_v 
+  
+  data_comm$b_delta[i] <- 2 * (1 + psi_delta * sigma_u * (sigma_v - 2 * sigma_u))
+  
+  data_comm$c_delta[i] <- 1 + 2 * psi_delta * sigma_u * (sigma_v - 2 * sigma_u) + (psi_delta * sigma_u * sigma_v)^2
+  
+  data_comm$Delta_R_eff_delta[i] <- 0.5 * (1 - data_comm$a_delta[i] * data_comm$perc_first_dose[i]/100 + 
+                                       sqrt(1 - data_comm$b_delta[i] * data_comm$perc_first_dose[i]/100 + data_comm$c_delta[i] * (data_comm$perc_first_dose[i]/100)^2))
+  
+  data_comm$Delta_R_homo_delta[i] <- (data_comm$contact_model_2[i]/1.68) * (1 - (1 - psi_delta) * data_comm$perc_first_dose[i]/100)
+  
+}
+```
+
+omicron
+
+```{r}
+gamma_u <- 1/10
+gamma_v <- 1/7
+c_uu <- 1.68
+c_uv <- 5.64
+c_vv <- 4.92
+
+alpha_omicron <- (1 - 0.182) # note these are for full vaccination
+pi_omicron <- (1 - 0.181)
+
+psi_omicron <- (gamma_u * alpha_omicron * pi_omicron)/gamma_v
+sigma_u <- c_uv/c_uu
+sigma_v <- c_vv/c_uv
+
+data_comm$a_omicron <- 0*data_comm$perc_first_dose
+data_comm$b_omicron <- 0*data_comm$perc_first_dose
+data_comm$c_omicron <- 0*data_comm$perc_first_dose
+
+
+for (i in 1:length(data_comm$perc_first_dose)) {
+  
+  data_comm$a_omicron[i] <- 1 - psi_omicron * sigma_u * sigma_v 
+  
+  data_comm$b_omicron[i] <- 2 * (1 + psi_omicron * sigma_u * (sigma_v - 2 * sigma_u))
+  
+  data_comm$c_omicron[i] <- 1 + 2 * psi_omicron * sigma_u * (sigma_v - 2 * sigma_u) + (psi_omicron * sigma_u * sigma_v)^2
+  
+  data_comm$Delta_R_eff_omicron[i] <- 0.5 * (1 - data_comm$a_omicron[i] * data_comm$perc_first_dose[i]/100 + 
+                                       sqrt(1 - data_comm$b_omicron[i] * data_comm$perc_first_dose[i]/100 + data_comm$c_omicron[i] * (data_comm$perc_first_dose[i]/100)^2))
+  
+  data_comm$Delta_R_homo_omicron[i] <- (data_comm$contact_model_2[i]/1.68) * (1 - (1 - psi_omicron) * data_comm$perc_first_dose[i]/100)
+  
+}
+```
+
+Alpha
+
+```{r}
+alpha <- ggplot(data_comm, aes(x = perc_first_dose)) +
+  geom_line(aes(y = Delta_R_homo_alpha, colour = "Homogeneous mixing"), linewidth = 1) +
+  geom_line(aes(y = Delta_R_eff_alpha, colour = "Heterogeneous mixing"), linewidth = 1) +
+  labs(x = "", y = expression(tilde(R)[eff]), colour = "model", title = expression("Alpha")) +
+  scale_x_continuous(breaks = seq(0, 100, 20), limits = c(0, 100)) +
+  theme_minimal() +
+  theme(legend.position = "no") +
+  theme(plot.title = element_text(size = 12),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12)
+  )
+
+```
+
+Delta
+
+```{r}
+delta <- ggplot(data_comm, aes(x = perc_first_dose)) +
+  geom_line(aes(y = Delta_R_homo_delta, colour = "Homogeneous mixing"), linewidth = 1) +
+  geom_line(aes(y = Delta_R_eff_delta, colour = "Heterogeneous mixing"), linewidth = 1) +
+  labs(x = "Vaccinated population (%)", y = "", colour = "model", title = expression("Delta")) +
+  scale_x_continuous(breaks = seq(0, 100, 20), limits = c(0, 100)) +
+  theme_minimal() +
+  theme(legend.position = "no") +
+  theme(plot.title = element_text(size = 12),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12)
+  )
+
+```
+
+Omicron
+
+```{r}
+omic <- ggplot(data_comm, aes(x = perc_first_dose)) +
+  geom_line(aes(y = Delta_R_homo_omicron, colour = "Homogeneous mixing"), linewidth = 1) +
+  geom_line(aes(y = Delta_R_eff_omicron, colour = "Heterogeneous mixing"), linewidth = 1) +
+  labs(x = "", y = "", colour = "model", title = expression("Omicron")) +
+  scale_x_continuous(breaks = seq(0, 100, 20), limits = c(0, 100),) +
+  theme_minimal() +
+  theme(legend.position = "no") +
+  theme(plot.title = element_text(size = 12),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12)
+  )
+
+```
+
+
+Estimating Reff across all variants
+
+```{r}
+for (i in 1:length(data_comm$date)) {
+  data_comm$Delta_R_eff[i] <- (data_comm$alpha[i] * data_comm$Delta_R_eff_alpha[i]) +
+    (data_comm$delta[i] * data_comm$Delta_R_eff_delta[i]) +
+    (data_comm$omic[i] * data_comm$Delta_R_eff_omicron[i])
+  
+  data_comm$Delta_R_eff_homo[i] <- (data_comm$alpha[i] * data_comm$Delta_R_homo_alpha[i]) +
+    (data_comm$delta[i] * data_comm$Delta_R_homo_delta[i]) +
+    (data_comm$omic[i] * data_comm$Delta_R_homo_omicron[i])
+}
+```
+
+
+```{r}
+all <- ggplot(data_comm, aes(x = date)) +
+  geom_line(aes(y = Delta_R_eff_homo, colour = "Homogeneous mixing"), linewidth = 1) +
+  geom_line(aes(y = Delta_R_eff, colour = "Heterogeneous mixing"), linewidth = 1) +
+  geom_vline(xintercept = as.Date("2021-04-25"), colour = "black", linetype = "dashed") + 
+  geom_vline(xintercept = as.Date("2021-11-22"), colour = "black", linetype = "dashed") +
+  labs(x = "Date", y = expression(tilde(R)[eff]), colour = "Model") +
+  scale_x_continuous(breaks = seq(min(data_comm$date), max(data_comm$date), by = "2 month")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 12)
+  ) +
+  theme(plot.background = element_rect(fill = "white", colour = NA))
+
+```
+
+```{r}
+above_row <- (alpha + delta + omic)
+```
+
+```{r}
+fig_3 <- ggarrange(above_row, all,
+                   labels = c("A","B"),
+                   nrow = 2)
+```
+
+
